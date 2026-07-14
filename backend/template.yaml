@@ -1,0 +1,172 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: FinReview Backend
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref FinReviewTable
+        MARKET_DATA_API_KEY: "YOUR_MARKET_API_KEY"
+        OPENROUTER_API_KEY: "YOUR_OPENROUTER_KEY"
+        NEWS_API_KEY: "YOUR_NEWS_API_KEY"
+        TELEGRAM_BOT_TOKEN: "YOUR_BOT_TOKEN"
+        TELEGRAM_CHAT_ID: "YOUR_CHAT_ID"
+
+Resources:
+  FinReviewTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: PK
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  FinReviewUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: FinReviewUserPool
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      AutoVerifiedAttributes:
+        - email
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+
+  FinReviewUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: FinReviewWebClient
+      UserPoolId: !Ref FinReviewUserPool
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+
+  PortfolioApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors: "'*'"
+      Auth:
+        DefaultAuthorizer: MyCognitoAuthorizer
+        Authorizers:
+          MyCognitoAuthorizer:
+            UserPoolArn: !GetAtt FinReviewUserPool.Arn
+
+  RecordTransactionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers.record_transaction_handler.lambda_handler
+      Runtime: python3.11
+      Events:
+        PostTransaction:
+          Type: Api
+          Properties:
+            Path: /transactions
+            Method: post
+            RestApiId: !Ref PortfolioApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FinReviewTable
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref FinReviewTable
+
+  GetPortfolioSummaryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers.get_portfolio_summary_handler.lambda_handler
+      Runtime: python3.11
+      Events:
+        GetSummary:
+          Type: Api
+          Properties:
+            Path: /summary
+            Method: get
+            RestApiId: !Ref PortfolioApi
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref FinReviewTable
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref FinReviewTable
+
+  RefreshPricesQueue:
+    Type: AWS::SQS::Queue
+
+  RefreshPricesWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers.refresh_prices_worker.lambda_handler
+      Runtime: python3.11
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt RefreshPricesQueue.Arn
+            BatchSize: 10
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref FinReviewTable
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref FinReviewTable
+
+  PriceRefreshScheduler:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: "rate(1 hour)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt RefreshPricesQueue.Arn
+          Id: "RefreshPricesQueueTarget"
+          Input: '{"symbols": ["AAPL", "GOOGL", "MSFT", "AMZN"]}'
+          SqsParameters:
+            MessageGroupId: "PriceRefresh" # Only for FIFO
+
+  # Frontend Hosting Bucket
+  FinReviewFrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "finreview-web-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+
+  FinReviewBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FinReviewFrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadForGetBucketObjects
+            Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub 'arn:aws:s3:::${FinReviewFrontendBucket}/*'
+
+Outputs:
+  PortfolioApiUrl:
+    Description: "API Gateway endpoint URL for Prod stage"
+    Value: !Sub "https://${PortfolioApi}.execute-api.${AWS::Region}.amazonaws.com/prod/"
+  UserPoolId:
+    Value: !Ref FinReviewUserPool
+  ClientId:
+    Value: !Ref FinReviewUserPoolClient
+  FrontendUrl:
+    Description: "S3 Website URL"
+    Value: !GetAtt FinReviewFrontendBucket.WebsiteURL

@@ -1,0 +1,37 @@
+# Environment
+.env
+.env.*
+!.env.example
+env.json
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+backend/finreview.db
+
+# Logs
+startup_log.txt
+backend/startup_log.txt
+
+# Jupyter notebooks (strip outputs or ignore entirely)
+*.ipynb
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Frontend / Node
+node_modules/
+dist/
+build/
+
+# Runtime config (ignored; use config.runtime.example.php as template)
+frontend/config.runtime.php

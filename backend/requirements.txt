@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+sqlmodel
+pydantic-settings
+httpx
+requests
+feedparser
+beautifulsoup4
+mangum
+python-dotenv
+psycopg2-binary
+passlib[bcrypt]
+vaderSentiment

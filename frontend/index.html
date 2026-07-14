@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinReview - Portfolio Intelligence</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bs-body-bg: #f8fafc;
+            --fin-primary: #0f172a;
+            --fin-accent: #3b82f6;
+            --fin-success: #10b981;
+            --fin-danger: #ef4444;
+            --fin-warning: #f59e0b;
+        }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: var(--bs-body-bg); color: #334155; overflow-x: hidden; }
+        .navbar { background-color: #fff; border-bottom: 1px solid #e2e8f0; }
+        .navbar-brand { font-weight: 700; color: var(--fin-primary); }
+        .card { border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .card-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700; margin-bottom: 1.25rem; }
+        
+        .badge-soft-success { background-color: #d1e7dd; color: #0f5132; }
+        .badge-soft-danger { background-color: #f8d7da; color: #842029; }
+        .badge-soft-warning { background-color: #fff3cd; color: #664d03; }
+        .badge-soft-primary { background-color: #cfe2ff; color: #084298; }
+
+        .stat-val { font-size: 1.5rem; font-weight: 700; color: var(--fin-primary); }
+        .stat-label { font-size: 0.75rem; color: #64748b; font-weight: 600; }
+        
+        .nav-link { font-weight: 500; color: #64748b; cursor: pointer !important; }
+        .nav-link.active { color: var(--fin-accent) !important; border-bottom: 2px solid var(--fin-accent); }
+        
+        .table thead th { background-color: #f8fafc; color: #64748b; font-size: 0.7rem; text-transform: uppercase; border-top: none; padding: 12px 8px; }
+        .hidden { display: none !important; }
+        
+        #allocation-chart-container { height: 200px; position: relative; }
+
+        #rebalance-list, #overlap-list, #news-list { 
+            max-height: 300px; 
+            overflow-y: auto;
+            overflow-x: hidden;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            scrollbar-width: thin;
+            display: block;
+        }
+        .news-item { 
+            word-wrap: break-word; 
+            overflow-wrap: break-word; 
+            white-space: normal;
+            display: block;
+            overflow: hidden;
+            width: 100%;
+        }
+        
+        .tx-search-container { position: relative; }
+        .tx-results-dropdown {
+            position: fixed;
+            z-index: 3000;
+            background: white;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            width: 300px;
+        }
+
+        .dropdown-item, .cursor-pointer, .btn { cursor: pointer !important; }
+        .dropdown-toggle::after { display: none !important; }
+
+        @media (max-width: 768px) {
+            .stat-val { font-size: 1.25rem; }
+        }
+
+        .highlight-flash {
+            animation: flash-bg 2s ease-out;
+            border: 2px solid #3b82f6 !important;
+        }
+        @keyframes flash-bg {
+            0% { background-color: rgba(59, 130, 246, 0.2); }
+            100% { background-color: white; }
+        }
+        .btn-xs { padding: 0.15rem 0.4rem; font-size: 0.65rem; }
+
+        /* News Refinements */
+        .news-filter-btn { border: 1px solid transparent !important; color: #64748b !important; font-weight: 600 !important; font-size: 0.85rem !important; transition: all 0.2s !important; }
+        .news-filter-btn:hover { background: #f1f5f9 !important; color: var(--fin-primary) !important; }
+        .news-filter-btn.active { background: var(--fin-accent) !important; color: white !important; border-color: var(--fin-accent) !important; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3) !important; border-bottom: none !important; }
+        
+        .news-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid #e2e8f0 !important; }
+        .news-card:hover { transform: translateY(-4px); box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.1) !important; border-color: var(--fin-accent) !important; }
+        
+        #strategic-strategy-section { scroll-margin-top: 100px; }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav id="main-nav" class="navbar navbar-expand-lg sticky-top mb-4 hidden">
+        <div class="container">
+            <a class="navbar-brand cursor-pointer" onclick="showPage('dashboard')"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>FinReview</a>
+            
+            <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item"><a class="nav-link active" onclick="showPage('dashboard')" id="nav-dashboard">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="showPage('portfolio')" id="nav-portfolio">Portfolio</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="showPage('rebalance')" id="nav-rebalance">Drift Diagnostic</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="showPage('news')" id="nav-news">Market News</a></li>
+                </ul>
+                <div class="d-flex align-items-center mt-3 mt-lg-0">
+                    <div class="position-relative me-4" style="cursor: pointer;" onclick="toggleNotifications()">
+                        <i class="bi bi-bell h5 text-muted"></i>
+                        <span id="notif-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light hidden" style="padding: 4px; font-size: 8px;">&nbsp;</span>
+                        <div id="notif-dropdown" class="card position-absolute shadow-lg hidden" style="width: 320px; right: -100px; top: 35px; z-index: 2000; border-radius: 12px; cursor: default;">
+                            <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center border-0 pt-3">
+                                Intelligence Hub <span class="badge bg-light text-primary border" id="notif-count">0 New</span>
+                            </div>
+                            <div class="card-body p-0" id="notif-list" style="max-height: 400px; overflow-y: auto;">
+                                <div class="text-center p-4 text-muted small">No new signals.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dropdown">
+                        <div class="d-flex align-items-center cursor-pointer" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold me-2 shadow-sm" style="width: 36px; height: 36px; font-size: 14px;" id="user-avatar-init">U</div>
+                            <span id="user-display" class="small text-dark fw-medium d-none d-md-inline"></span>
+                            <i class="bi bi-chevron-down ms-1 small text-muted"></i>
+                        </div>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" style="border-radius: 12px;">
+                            <li><a class="dropdown-item py-2 small" onclick="showPage('profile')"><i class="bi bi-person me-2"></i>My Profile</a></li>
+                            <li><a class="dropdown-item py-2 small" onclick="showPage('about')"><i class="bi bi-info-circle me-2"></i>The FinReview Edge</a></li>
+                            <li><hr class="dropdown-divider opacity-10"></li>
+                            <li><a class="dropdown-item py-2 small text-danger" onclick="logout()"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- AUTH PAGE -->
+    <div id="auth-page" class="container hidden">
+        <div class="row justify-content-center" style="margin-top: 100px;">
+            <div class="col-md-4">
+                <div class="card p-4 shadow-lg border-0" style="border-radius: 20px;">
+                    <h2 id="auth-title" class="h4 mb-4 text-center fw-bold">Login</h2>
+                    <form id="login-form" onsubmit="event.preventDefault(); return false;">
+                        <div class="mb-3">
+                            <label class="form-label small">Email Address</label>
+                            <input type="email" id="auth-email" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small">Password</label>
+                            <input type="password" id="auth-password" class="form-control" required autocomplete="current-password">
+                        </div>
+                        <div id="signup-extra-fields" class="hidden">
+                            <div class="mb-3"><label class="form-label small">Full Name</label><input type="text" id="auth-name" class="form-control"></div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-4"><label class="form-label small">Birth Year</label><input type="number" id="auth-dob" class="form-control" placeholder="YYYY"></div>
+                                <div class="col-4"><label class="form-label small">City</label><input type="text" id="auth-city" class="form-control"></div>
+                                <div class="col-4"><label class="form-label small">State</label><input type="text" id="auth-state" class="form-control"></div>
+                            </div>
+                        </div>
+                        <button type="submit" id="auth-submit-btn" class="btn btn-primary w-100 py-2 fw-bold rounded-pill">Continue</button>
+                    </form>
+                    <div class="text-center mt-3"><a href="#" onclick="toggleAuthMode()" id="auth-toggle" class="small text-decoration-none">Don't have an account? Sign Up</a></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="main-app" class="container hidden">
+        
+        <!-- DASHBOARD -->
+        <div id="dashboard-page" class="page pb-5 mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-4 mt-2">
+                <h1 class="h3 fw-bold m-0 text-dark">Dashboard</h1>
+                <div class="d-flex flex-column align-items-end">
+                    <button id="refresh-intel-btn" onclick="refreshAllIntelligence()" class="btn btn-primary fw-bold shadow-sm px-4 rounded-pill">
+                        <i class="bi bi-stars me-2"></i>Refresh Intelligence
+                    </button>
+                    <small id="last-refresh-time" class="text-muted mt-1" style="font-size: 10px;"></small>
+                </div>
+            </div>
+
+            <div id="empty-portfolio-state" class="card border-0 shadow-sm mb-4 hidden" style="border-radius: 16px;">
+                <div class="card-body p-5 text-center">
+                    <h2 class="h4 fw-bold text-dark mb-2">Welcome to FinReview</h2>
+                    <p class="text-muted mb-4">Your portfolio is empty. Choose how you would like to get started.</p>
+                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                        <button type="button" class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#txModal">Add Transactions</button>
+                        <button type="button" class="btn btn-outline-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#txModal">Import CSV</button>
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" onclick="loadSamplePortfolio()">Load Sample Portfolio</button>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <h6 class="card-title mb-2">Market Context</h6>
+                                <div class="d-flex gap-3" id="market-context-row">
+                                    <div class="flex-grow-1 p-3 bg-light rounded text-center">
+                                        <div class="small text-muted mb-1" style="font-size: 12px;">Nifty 50</div>
+                                        <div class="fw-bold text-dark h5" id="nifty-50-val">₹0.00</div>
+                                        <div class="small text-muted" id="nifty-50-change">0.00%</div>
+                                    </div>
+                                    <div class="flex-grow-1 p-3 bg-light rounded text-center">
+                                        <div class="small text-muted mb-1" style="font-size: 12px;">Nifty Next 50</div>
+                                        <div class="fw-bold text-dark h5" id="nifty-next-50-val">₹0.00</div>
+                                        <div class="small text-muted" id="nifty-next-50-change">0.00%</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <h6 class="card-title">Portfolio Snapshot</h6>
+                            <div class="row align-items-center">
+                                <div class="col-md-7">
+                                    <div class="row g-3">
+                                        <div class="col-6 mb-2"><div class="stat-label">Valuation</div><div class="stat-val" id="total-val">₹0</div></div>
+                                        <div class="col-6 mb-2"><div class="stat-label">Invested</div><div class="stat-val" id="total-invested">₹0</div></div>
+                                        <div class="col-6 mb-2"><div class="stat-label">Returns</div><div class="stat-val" id="total-gain">₹0</div></div>
+                                        <div class="col-6 mb-2"><div class="stat-label">XIRR</div><div class="stat-val text-success" id="total-xirr">0.0%</div></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-5"><div id="allocation-chart-container"><canvas id="allocationChart"></canvas></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-body p-0">
+                            <div class="p-3 border-bottom d-flex justify-content-between align-items-center"><h6 class="card-title m-0">Top Holdings</h6><a onclick="showPage('portfolio')" class="btn btn-link btn-sm text-decoration-none p-0 fw-bold">View All →</a></div>
+                            <div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th class="ps-3">Symbol</th><th>Quantity</th><th>Avg Price</th><th>Value</th><th class="text-end pe-3">P&L %</th></tr></thead><tbody id="holdings-body"></tbody></table></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 pb-5">
+                    <div class="card mb-4 border-0 shadow-sm overflow-hidden" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 16px;">
+                        <div class="card-body p-4 text-white">
+                            <div class="d-flex justify-content-between align-items-center mb-3"><h6 class="card-title text-white opacity-75 m-0" style="font-size: 0.65rem;">Daily Briefing</h6><span class="badge bg-primary px-2 py-1" style="font-size: 8px;">AI POWERED</span></div>
+                            <div id="ai-briefing-snippet" class="small mb-3" style="line-height: 1.5; color: #cbd5e1;">Analyzing signals...</div>
+                            <button type="button" class="btn btn-sm btn-light w-100 fw-bold py-2 rounded-pill" onclick="openBriefingModal()">View Detailed Briefing</button>
+                        </div>
+                    </div>
+                    <div class="card mb-4 border-start border-primary border-4"><div class="card-body"><h6 class="card-title mb-3">Allocation Drift</h6><div id="rebalance-summary" class="small text-muted mb-3">Check weight variance...</div><div id="rebalance-list"></div></div></div>
+                    <div class="card position-relative mb-4">
+                        <div class="card-body">
+                            <h6 class="card-title mb-3">Portfolio Diagnostics</h6>
+                            <div id="portfolio-diagnostics-content" class="small"><div class="text-muted small">Diagnostics will appear after portfolio data is loaded.</div></div>
+                        </div>
+                    <div class="card mb-5"><div class="card-body"><h6 class="card-title mb-3">Market Intelligence</h6><div id="news-list" class="small" style="max-height: 280px; overflow-y: auto;">Fetching news...</div></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PORTFOLIO PAGE -->
+        <div id="portfolio-page" class="page hidden pb-5 mb-5">
+            <div class="card shadow-sm mb-4" style="border-radius: 20px;">
+                <div class="card-header bg-white py-3 border-0"><div class="d-flex justify-content-between align-items-center"><h2 class="h4 m-0 fw-bold">Portfolio Performance</h2><div class="d-flex gap-2"><button type="button" class="btn btn-outline-primary btn-sm fw-bold px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#alertModal">🔔 Set Alert</button><button type="button" class="btn btn-primary btn-sm fw-bold px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#txModal">+ Add / Import</button><button type="button" onclick="showPage('dashboard')" class="btn btn-outline-secondary btn-sm rounded-pill">← Dashboard</button></div></div></div>
+                <div class="card-body bg-light border-top border-bottom py-3"><div class="d-flex justify-content-end gap-4 px-3 text-end"><div><div class="small text-muted">Invested</div><div class="fw-bold text-dark h5 mb-0" id="port-total-invested">₹0</div></div><div><div class="small text-muted">Value</div><div class="fw-bold text-dark h5 mb-0" id="port-total-val">₹0</div></div><div><div class="small text-muted">P&L</div><div class="fw-bold h5 mb-0" id="port-total-gain">₹0</div></div></div></div>
+                <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th class="ps-4">Asset</th><th>Qty</th><th>Avg Cost</th><th>LTP</th><th>Total Cost</th><th>Value</th><th class="text-end pe-4">P&L %</th></tr></thead><tbody id="full-portfolio-body"></tbody></table></div></div>
+            </div>
+        </div>
+
+        <!-- DRIFT PAGE -->
+        <div id="rebalance-page" class="page hidden pb-5 mb-5">
+            <div class="card shadow-sm border-0" style="border-radius: 24px;">
+                <div class="card-body p-5">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2 class="h3 fw-bold m-0">Portfolio Drift Diagnostic</h2>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-primary rounded-pill fw-bold" onclick="location.hash='#edit-strategy'; showPage('profile')">
+                                <i class="bi bi-gear-fill me-2"></i>Edit Strategy
+                            </button>
+                            <button type="button" onclick="showPage('dashboard')" class="btn btn-outline-secondary rounded-pill">← Dashboard</button>
+                        </div>
+                    </div>
+                    <div id="full-rebalance-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEWS PAGE -->
+        <div id="news-page" class="page hidden pb-5 mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="h4 m-0 fw-bold">Market Intelligence Feed</h2>
+                <div class="d-flex align-items-center gap-3">
+                    <div id="news-legend" class="small text-muted" style="font-size:0.8rem;">
+                        <span class="me-2">Legend:</span>
+                        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#28a745;margin-right:6px;vertical-align:middle;"></span><span class="me-2">Positive</span>
+                        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6c757d;margin-right:6px;vertical-align:middle;"></span><span class="me-2">Neutral</span>
+                        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#dc3545;margin-right:6px;vertical-align:middle;"></span><span>Negative</span>
+                    </div>
+                    <button type="button" onclick="showPage('dashboard')" class="btn btn-outline-secondary btn-sm rounded-pill">← Dashboard</button>
+                </div>
+            </div>
+            <div class="mb-4">
+                <div class="nav nav-pills gap-2 bg-white p-2 rounded-pill shadow-sm d-inline-flex border">
+                    <button type="button" class="nav-link active rounded-pill px-4 py-2 news-filter-btn" data-cat="ALL" onclick="filterNews('ALL', this)">All Feeds</button>
+                    <button type="button" class="nav-link rounded-pill px-4 py-2 news-filter-btn" data-cat="RESULT" onclick="filterNews('RESULT', this)">📊 Financial Results</button>
+                    <button type="button" class="nav-link rounded-pill px-4 py-2 news-filter-btn" data-cat="ANNOUNCEMENT" onclick="filterNews('ANNOUNCEMENT', this)">🔔 Announcements</button>
+                    <button type="button" class="nav-link rounded-pill px-4 py-2 news-filter-btn" data-cat="ACTION" onclick="filterNews('ACTION', this)">💎 Corporate Actions</button>
+                </div>
+            </div>
+            <div id="full-news-grid" class="row g-4"></div>
+        </div>
+
+        <!-- PROFILE PAGE -->
+        <div id="profile-page" class="page hidden pb-5 mb-5">
+            <div class="row justify-content-center">
+                <div class="col-md-10 col-lg-8">
+                    <div class="card shadow-sm border-0 mb-4 overflow-hidden" style="border-radius: 20px;">
+                        <div class="card-body p-5 bg-white">
+                            <h6 class="text-uppercase text-muted small fw-bold mb-1">Edition</h6>
+                            <h3 id="prof-plan-name" class="fw-bold mb-0 text-success">Community Edition</h3>
+                            <p id="prof-plan-desc" class="small text-muted mb-0 mt-1">All portfolio intelligence features are available.</p>
+                        </div>
+                    </div>                    <div class="card shadow-sm border-0" style="border-radius: 20px;">
+                        <div class="card-header bg-white pt-5 border-0 text-center"><h4 class="fw-bold">Investment Profile</h4></div>
+                        <div class="card-body p-5">
+                            <form id="profile-form" onsubmit="event.preventDefault(); return false;">
+                                <div id="empty-portfolio-state" class="card border-0 shadow-sm mb-4 hidden" style="border-radius: 16px;">
+                <div class="card-body p-5 text-center">
+                    <h2 class="h4 fw-bold text-dark mb-2">Welcome to FinReview</h2>
+                    <p class="text-muted mb-4">Your portfolio is empty. Choose how you would like to get started.</p>
+                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                        <button type="button" class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#txModal">Add Transactions</button>
+                        <button type="button" class="btn btn-outline-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#txModal">Import CSV</button>
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" onclick="loadSamplePortfolio()">Load Sample Portfolio</button>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-4">
+                                    <div class="col-md-6"><label class="form-label small fw-bold">Full Name</label><input type="text" id="prof-name" class="form-control py-2"></div>
+                                    <div class="col-md-6"><label class="form-label small fw-bold">Email</label><input type="email" id="prof-email" class="form-control bg-light py-2" readonly></div>
+                                    <div class="col-md-4"><label class="form-label small fw-bold">Birth Year</label><input type="number" id="prof-dob" class="form-control py-2"></div>
+                                    <div class="col-md-4"><label class="form-label small fw-bold">City</label><input type="text" id="prof-city" class="form-control py-2"></div>
+                                    <div class="col-md-4"><label class="form-label small fw-bold">State</label><input type="text" id="prof-state" class="form-control py-2"></div>
+                                </div>
+                                <div id="strategic-strategy-section" class="mt-4 pt-4 border-top">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="fw-bold m-0">Strategic Target Allocation</h6>
+                                        <div class="d-flex align-items-center bg-light p-2 rounded shadow-sm" style="border: 1px solid #e2e8f0;">
+                                            <label class="small fw-bold text-muted me-2 mb-0">Drift Sensitivity:</label>
+                                            <span id="sensitivity-val" class="badge bg-primary me-2">5%</span>
+                                            <input type="range" id="drift-sensitivity" class="form-range" min="1" max="20" step="0.5" value="5" style="width: 100px;" oninput="document.getElementById('sensitivity-val').innerText = this.value + '%'">
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="target-alloc-inline" class="mb-3"></div>
+                                    
+                                    <div class="row g-2 align-items-end mb-2">
+                                        <div class="col-7">
+                                            <label class="form-label small">Search Asset</label>
+                                            <div class="tx-search-container">
+                                                <input type="text" id="target-sym-search" class="form-control py-2" placeholder="e.g., RELIANCE" onkeyup="handleSearch(this.value, 'target')">
+                                                <div id="results-target" class="tx-results-dropdown hidden"></div>
+                                                <input type="hidden" id="target-sym">
+                                            </div>
+                                        </div>
+                                        <div class="col-3"><label class="form-label small">Weight %</label><input type="number" id="target-weight" class="form-control py-2" step="0.1"></div>
+                                        <div class="col-2"><button type="button" class="btn btn-outline-primary w-100 py-2 fw-bold" onclick="addTargetAlloc()">Add</button></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mt-3">
+                                        <small class="text-muted">Set targets to trigger alerts when allocation drifts beyond sensitivity.</small>
+                                        <button type="button" class="btn btn-link btn-sm text-decoration-none fw-bold" data-bs-toggle="modal" data-bs-target="#targetModal">Manage All Targets →</button>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-end mt-4">
+                                    <button type="button" onclick="handleProfileUpdate(event)" class="btn btn-primary btn-sm px-4 py-2 fw-bold rounded-pill shadow-sm">Save Changes</button>
+                                </div>
+
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EDGE PAGE -->
+        <div id="about-page" class="page hidden">
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card p-5 shadow-sm border-0" style="border-radius: 24px;">
+                        <h2 class="fw-bold text-dark mb-4">The FinReview Edge</h2>
+                        <p class="text-secondary" style="line-height: 1.8;">FinReview provides <strong>decision-grade analytics</strong> for Indian investors.</p>
+                        <div class="mt-5 pt-4 border-top text-center"><button type="button" onclick="showPage('methodology')" class="btn btn-outline-primary fw-bold px-4 rounded-pill">View Our Methodology</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- METHODOLOGY -->
+        <div id="methodology-page" class="page hidden">
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card p-5 shadow-sm border-0" style="border-radius: 24px;">
+                        <h3 class="fw-bold text-dark mb-4">Our Methodology</h3>
+                        <div class="mb-4"><h6 class="fw-bold text-primary small mb-2">PERFORMANCE (XIRR)</h6><p class="small text-secondary">Calculated using the Newton-Raphson method for irregular cash flows.</p></div>
+                        <div class="text-center mt-4"><button type="button" onclick="showPage('about')" class="btn btn-link text-decoration-none fw-bold">← Back</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <footer id="main-footer" class="mt-5 pt-5 pb-4 hidden">
+            <div class="row justify-content-center">
+                <div class="col-md-10 text-center">
+                    <div class="alert alert-light border-0 small text-muted mb-4 p-5 bg-white shadow-sm" style="border-radius: 24px; line-height: 1.8;">
+                        <h6 class="fw-bold text-dark mb-3 text-uppercase tracking-wider" style="font-size: 0.7rem;">Regulatory Disclaimer & Terms</h6>
+                        FinReview is a <strong>diagnostic and informational tool</strong>. We are <strong>not SEBI-registered investment advisors</strong>. All analyses are for educational purposes only. They do not constitute financial advice or a solicitation to buy/sell securities. Users remain solely responsible for their investment decisions.
+                    </div>
+                    <hr class="mb-4 opacity-10">
+                    <p class="text-secondary fw-medium">© 2026 FinReview. Built for disciplined investors.</p>
+                </div>
+            </div>
+        </footer>
+    </div> <!-- END MAIN APP -->
+
+    <!-- MODALS -->
+    <div class="modal fade" id="txModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                <div class="modal-header bg-primary text-white border-0 py-3"><h5 class="modal-title fw-bold">Portfolio Import & Record</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body p-4 bg-light">
+                    <div class="card shadow-sm mb-4 border-0 position-relative">
+                        <div class="card-body">
+                            <h6 class="m-0 fw-bold text-dark">CAS PDF Import</h6>
+                            <p class="small text-muted mb-3">Parser integration is not enabled in v1.0.0. Use CSV import or manual entry for this release.</p>
+                            <div class="input-group input-group-sm mt-3"><input type="file" id="cas-file" class="form-control" accept=".pdf" disabled><input type="password" id="cas-password" class="form-control" placeholder="Disabled in v1.0.0" autocomplete="current-password" disabled><button type="button" class="btn btn-outline-secondary" onclick="uploadCAS(event); return false;">Unavailable</button></div>
+                        </div>
+                    </div>
+                    <div class="card shadow-sm mb-4 border-0"><div class="card-body"><h6 class="fw-bold text-dark mb-3">Bulk Import via CSV</h6><div class="input-group input-group-sm"><input type="file" id="csv-file" class="form-control" accept=".csv"><button type="button" class="btn btn-primary" onclick="uploadCSV(event); return false;">Import</button></div></div></div>
+
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3"><h6 class="m-0 fw-bold">Manual Entry</h6><button type="button" onclick="addTxRow()" class="btn btn-success btn-xs px-3">+ Add</button></div>
+                            <form id="bulk-tx-form" onsubmit="event.preventDefault(); return false;">
+                                <div class="table-responsive"><table class="table table-borderless align-middle"><thead><tr class="small text-muted text-uppercase" style="font-size: 10px;"><th>Asset</th><th>Action</th><th>Qty</th><th>Price</th><th></th></tr></thead><tbody id="tx-rows"></tbody></table></div>
+                                <div class="mt-3 pt-3 border-top d-flex justify-content-end gap-2"><button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Close</button><button type="button" onclick="recordBulkTransactions(event); return false;" class="btn btn-primary px-5 fw-bold">Save All</button></div>
+
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TARGET ALLOCATION MODAL -->
+    <div class="modal fade" id="targetModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+                <div class="modal-header bg-white py-3 border-0"><h5 class="modal-title fw-bold">Manage Target Allocation</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body p-4 bg-light">
+                    <div id="target-alloc-manage-list" class="mb-3"></div>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-7">
+                            <label class="form-label small">Search Asset</label>
+                            <div class="tx-search-container">
+                                <input type="text" id="target-sym-search-modal" class="form-control py-2" placeholder="e.g., RELIANCE" onkeyup="handleSearch(this.value, 'target')">
+                                <div id="results-target" class="tx-results-dropdown hidden"></div>
+                                <input type="hidden" id="target-sym">
+                            </div>
+                        </div>
+                        <div class="col-3"><label class="form-label small">Target %</label><input type="number" id="target-weight" class="form-control py-2" step="0.1"></div>
+                        <div class="col-2"><button type="button" class="btn btn-primary w-100 py-2" onclick="addTargetAlloc()">Add</button></div>
+                    </div>
+                    <div class="mt-3 small text-muted">Changes are applied locally; click <strong>Save & Close</strong> to persist to your profile.</div>
+                </div>
+                <div class="modal-footer bg-white border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="saveTargetAllocModal()">Save & Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="alertModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-header bg-primary text-white border-0 py-3">
+                    <h5 class="modal-title fw-bold">Portfolio Signals & Management</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <!-- CREATE NEW SIGNAL -->
+                    <div class="card border-0 shadow-sm mb-4" style="border-radius: 16px;">
+                        <div class="card-body p-4">
+                            <h6 class="fw-bold text-dark mb-3">Set New Alert Signal</h6>
+                            <form id="alert-form" onsubmit="event.preventDefault(); return false;">
+                                <div class="row g-3">
+                                    <div class="col-md-5">
+                                        <label class="form-label small fw-bold">Asset</label>
+                                        <div class="tx-search-container">
+                                            <input type="text" id="alert-symbol-search" class="form-control" placeholder="Search stock or MF..." onkeyup="handleSearch(this.value, 'alert')" required>
+                                            <div id="results-alert" class="tx-results-dropdown hidden"></div>
+                                            <input type="hidden" id="alert-symbol">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small fw-bold">Logic</label>
+                                        <select id="alert-type" class="form-select" onchange="toggleAlertFields()">
+                                            <option value="PRICE_ABOVE">Price Above (₹)</option>
+                                            <option value="PRICE_BELOW">Price Below (₹)</option>
+                                            <option value="VALUATION_BELOW">Valuation Below (₹)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label id="alert-threshold-label" class="form-label small fw-bold">Threshold</label>
+                                        <input type="number" id="alert-threshold" class="form-control" step="0.01" required>
+                                    </div>
+                                    <div class="col-md-2 d-flex align-items-end">
+                                        <button type="button" onclick="handleAlertSubmit(event); return false;" class="btn btn-primary w-100 fw-bold">Set</button>
+                                    </div>
+
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- ACTIVE SIGNALS LIST -->
+                    <div class="card border-0 shadow-sm" style="border-radius: 16px;">
+                        <div class="card-header bg-white border-0 pt-4 px-4 pb-0">
+                            <h6 class="fw-bold text-dark m-0">Manage Active Signals</h6>
+                        </div>
+                        <div class="card-body px-4 pb-4">
+                            <div id="active-rules-list" class="row g-2 mt-1" style="max-height: 300px; overflow-y: auto;">
+                                <div class="col-12 text-center py-4 text-muted small">Loading active signals...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="briefingModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 shadow-lg" style="border-radius: 20px;"><div class="modal-header bg-primary text-white border-0 py-4 px-4"><h5 class="modal-title fw-bold">Intelligence Summary</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-4 bg-light"><div id="ai-insights-list"></div></div></div></div>
+    </div>
+    <div class="modal fade" id="targetAllocModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-header bg-primary text-white border-0 py-3">
+                    <h5 class="modal-title fw-bold">Manage Strategic Targets</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <div id="target-alloc-full-list" class="mb-0">
+                        <div class="text-center py-4 text-muted small">No strategic targets defined.</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-white" style="border-radius: 0 0 20px 20px;">
+                    <button type="button" class="btn btn-primary w-100 py-2 fw-bold" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- REUSABLE CONFIRMATION MODAL -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-header bg-warning text-dark border-0 py-3">
+                    <h5 class="modal-title fw-bold">Unsaved Changes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 bg-light text-center">
+                    <i class="bi bi-exclamation-triangle h1 text-warning mb-3"></i>
+                    <p class="mb-0 fw-bold">You have unsaved strategic targets.</p>
+                    <p class="text-muted small">Are you sure you want to leave this page without saving?</p>
+                </div>
+                <div class="modal-footer border-0 bg-white pt-0 pb-4 justify-content-center gap-2">
+                    <button type="button" class="btn btn-light px-4 fw-bold rounded-pill" data-bs-dismiss="modal">Stay and Save</button>
+                    <button type="button" id="confirm-discard-btn" class="btn btn-danger px-4 fw-bold rounded-pill">Discard and Leave</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DIAGNOSTIC DETAILS MODAL -->
+    <div class="modal fade" id="diagnosticModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-header bg-primary text-white border-0 py-3">
+                    <h5 class="modal-title fw-bold" id="diagnostic-modal-title">Diagnostic Details</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 bg-light" id="diagnostic-modal-body">
+                    <!-- Dynamic content here -->
+                </div>
+                <div class="modal-footer border-0 bg-white">
+                    <button type="button" class="btn btn-primary w-100 py-2 fw-bold" data-bs-dismiss="modal">Got it</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <div id="loading-overlay" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); backdrop-filter: blur(3px); z-index: 100000; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <div class="spinner-grow text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+        <div id="loading-msg" class="fw-bold text-primary small text-uppercase">Loading...</div>
+    </div>
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 2050;"><div id="liveToast" class="toast hide shadow-lg border-0" style="border-radius: 12px;"><div class="d-flex"><div class="toast-body fw-medium" id="toast-body"></div><button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>
+    <script src="config.js"></script>
+    <script src="ui.js"></script>
+    <script src="auth.js"></script>
+    <script src="app.js"></script>
+    <footer class="text-center small text-muted py-3" style="position: fixed; bottom:0; width:100%; background:#fff; border-top:1px solid #e2e8f0; z-index: 100;">
+        *FinReview provides factual portfolio diagnostics and does not give investment advice. We are not registered with SEBI.
+    </footer>
+</body>
+</html>

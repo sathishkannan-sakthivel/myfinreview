@@ -1,5 +1,13 @@
 import os
 import logging
+from dotenv import load_dotenv
+
+# --- LOAD ENVIRONMENT VARIABLES ---
+# Resolve the path to backend/.env relative to this file's location to ensure robust loading
+config_dir = os.path.dirname(os.path.abspath(__file__))
+backend_dir = os.path.dirname(config_dir)
+env_path = os.path.join(backend_dir, '.env')
+load_dotenv(env_path)
 
 # --- LOGGING CONFIGURATION ---
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()

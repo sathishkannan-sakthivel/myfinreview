@@ -169,6 +169,10 @@ const CHART_COLORS = [
 ];
 
 function renderAllocationChart(holdings) {
+    if (typeof Chart === 'undefined') {
+        console.warn("Chart.js is not loaded. Skipping chart rendering.");
+        return;
+    }
     const canvas = document.getElementById('allocationChart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -351,8 +355,8 @@ function quickFillAction(symbol, action) {
 let searchTimeout = null;
 
 async function handleSearch(query, rowId = null) {
-    // Determine target container (row-specific, 'alert', or legacy fallback)
-    const containerId = (rowId === 'alert') ? 'results-alert' : (rowId !== null ? `results-${rowId}` : 'search-results');
+    // Determine target container (row-specific, 'alert', 'target-modal', or legacy fallback)
+    const containerId = (rowId === 'alert') ? 'results-alert' : (rowId === 'target-modal') ? 'results-target-modal' : (rowId !== null ? `results-${rowId}` : 'search-results');
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -370,7 +374,7 @@ async function handleSearch(query, rowId = null) {
         try {
             let allResults = [];
 
-            if (rowId === 'target') {
+            if (rowId === 'target' || rowId === 'target-modal') {
                 // Filter from user's current holdings only
                 const searchQ = qRaw.toUpperCase();
                 allResults = GLOBAL_HOLDINGS.filter(h => 
@@ -451,7 +455,7 @@ function searchStocks(query) {
 }
 
 function renderSearchResults(results, rowId = null) {
-    const containerId = (rowId === 'alert') ? 'results-alert' : (rowId !== null ? `results-${rowId}` : 'search-results');
+    const containerId = (rowId === 'alert') ? 'results-alert' : (rowId === 'target-modal') ? 'results-target-modal' : (rowId !== null ? `results-${rowId}` : 'search-results');
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -467,6 +471,8 @@ function renderSearchResults(results, rowId = null) {
             input = document.getElementById('alert-symbol-search');
         } else if (rowId === 'target') {
             input = document.getElementById('target-sym-search');
+        } else if (rowId === 'target-modal') {
+            input = document.getElementById('target-sym-search-modal');
         } else {
             input = document.querySelector(`#tx-row-${rowId} .tx-symbol-input`);
         }
@@ -512,6 +518,13 @@ function selectAsset(symbol, name, rowId = null) {
         const symHidden = document.getElementById('target-sym');
         if (symHidden) symHidden.value = symbol;
         const container = document.getElementById('results-target');
+        if (container) container.classList.add('hidden');
+    } else if (rowId === 'target-modal') {
+        const symInput = document.getElementById('target-sym-search-modal');
+        if (symInput) symInput.value = name;
+        const symHidden = document.getElementById('target-sym-modal');
+        if (symHidden) symHidden.value = symbol;
+        const container = document.getElementById('results-target-modal');
         if (container) container.classList.add('hidden');
     } else if (rowId !== null) {
         const row = document.getElementById(`tx-row-${rowId}`);

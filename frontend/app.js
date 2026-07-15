@@ -1,4 +1,5 @@
 // --- FINREVIEW CORE DASHBOARD LOGIC ---
+let GLOBAL_SUMMARY_DATA = null;
 
 async function refreshAllIntelligence() {
     const userIdStr = localStorage.getItem('finreview_user_id');
@@ -210,7 +211,7 @@ async function deleteAlertRule(ruleId) {
     const userId = localStorage.getItem('finreview_user_id');
     toggleAlertListLoading(true);
     try {
-        const res = await fetch(`${CONFIG.API_URL}/alerts/rule/${ruleId}`, { method: 'DELETE' });
+        const res = await fetch(`${CONFIG.API_URL}/alerts/rule/${ruleId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` } });
         if (res.ok) {
             showToast("Signal deleted!", "success");
             fetchAlertRules(userId);
@@ -228,8 +229,8 @@ async function fetchMarketContext() {
         if (res.ok) {
             const data = await res.json();
             data.indices.forEach(idx => {
-                const elId = idx.symbol === '^NSEI' ? 'nifty-50-val' : 'nifty-next-50-val';
-                const changeId = idx.symbol === '^NSEI' ? 'nifty-50-change' : 'nifty-next-50-change';
+                const elId = idx.name === 'Nifty 50' ? 'nifty-50-val' : 'nifty-next-50-val';
+                const changeId = idx.name === 'Nifty 50' ? 'nifty-50-change' : 'nifty-next-50-change';
                 const el = document.getElementById(elId);
                 const changeEl = document.getElementById(changeId);
                 if (el) {
@@ -311,6 +312,7 @@ async function fetchPortfolioSummary(silent = false) {
 
         if (!sumRes.ok) throw new Error('API not available');
         const data = await sumRes.json();
+        GLOBAL_SUMMARY_DATA = data;
         
         // --- SYNC GLOBAL PROFILE SETTINGS ---
         if (data.target_allocation) {
@@ -818,7 +820,10 @@ function updateUI(data) {
         planName.className = "fw-bold mb-0 text-success";
         if (planDesc) planDesc.innerText = "All portfolio intelligence features are available.";
     }
-        const totalInvested = data.analytics?.total_cost || data.total_cost || 0;
+        let totalInvested = data.analytics?.total_cost || data.total_cost || 0;
+    if (!totalInvested && data.holdings) {
+        totalInvested = data.holdings.reduce((sum, h) => sum + (h.total_quantity * h.avg_price), 0);
+    }
     const totalValuation = data.total_valuation || 0;
 
     document.getElementById('total-val').innerText = formatINR(totalValuation);
@@ -1066,6 +1071,7 @@ function updateUI(data) {
 let pendingPageId = null;
 
 function showPage(pageId, force = false, silent = false) {
+    console.log(`Showing page: ${pageId}`, { hasData: !!GLOBAL_SUMMARY_DATA });
     // 1. Navigation Guard: Check for unsaved changes if leaving Profile
     const currentPage = Array.from(document.querySelectorAll('.page')).find(p => !p.classList.contains('hidden'))?.id;
     if (!force && currentPage === 'profile-page' && pageId !== 'profile') {
@@ -1102,7 +1108,11 @@ function showPage(pageId, force = false, silent = false) {
         });
     }
 
-    if (pageId === 'profile') updateProfileUI();
+    if (pageId === 'profile') {
+        updateProfileUI();
+    } else if (GLOBAL_SUMMARY_DATA) {
+        updateUI(GLOBAL_SUMMARY_DATA);
+    }
     document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
     const target = document.getElementById(`${pageId}-page`);
     if (target) {
@@ -1141,11 +1151,11 @@ function showPage(pageId, force = false, silent = false) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    init();
+document.addEventListener('DOMContentLoaded', async () => {
+    await init();
 });
 
-function init() {
+async function init() {
     // 1. ALWAYS bind event listeners first
     document.getElementById('login-form')?.addEventListener('submit', handleAuth);
     document.getElementById('bulk-tx-form')?.addEventListener('submit', recordBulkTransactions);
@@ -1183,9 +1193,10 @@ function init() {
     else if (window.location.hash.includes('news')) initialPage = 'news';
     else if (savedPage) initialPage = savedPage;
 
+    await fetchPortfolioSummary();
     showPage(initialPage);
     applyCommunityAccessStyles();
-    fetchPortfolioSummary();
+    
 
     const txRows = document.getElementById('tx-rows');
     if (txRows && txRows.children.length === 0) addTxRow();

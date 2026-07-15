@@ -74,7 +74,7 @@ class ReferenceDataService:
                             for item in data:
                                 self.mf_cache[str(item.get('symbol', ''))] = item
                         else:
-                            self.mf_cache = data
+                            self.mf_cache.update(data)
                     logger.info(f"Loaded {len(self.mf_cache)} mutual funds from {p}")
                     return
                 except Exception as e:

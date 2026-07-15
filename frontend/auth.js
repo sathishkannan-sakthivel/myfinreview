@@ -115,6 +115,20 @@ function addTargetAlloc() {
     }
 }
 
+function addTargetAllocModal() {
+    const sym = document.getElementById('target-sym-modal').value.trim().toUpperCase();
+    const weight = parseFloat(document.getElementById('target-weight-modal').value);
+    
+    if (sym && !isNaN(weight)) {
+        CURRENT_TARGET_ALLOC[sym] = weight;
+        renderTargetAllocUI();
+        const searchInput = document.getElementById('target-sym-search-modal');
+        if (searchInput) searchInput.value = '';
+        document.getElementById('target-sym-modal').value = '';
+        document.getElementById('target-weight-modal').value = '';
+    }
+}
+
 function removeTargetAlloc(sym) {
     delete CURRENT_TARGET_ALLOC[sym];
     renderTargetAllocUI();

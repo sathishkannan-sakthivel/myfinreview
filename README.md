@@ -1,219 +1,395 @@
-# FinReview Community Edition
+# FinReview
 
-FinReview is a self-hostable portfolio intelligence application for Indian market investors. It combines portfolio tracking, transaction import, market data refreshes, analytics, alerts, market news, and AI-generated informational briefings in a FastAPI plus static frontend architecture.
+> **AI-Assisted Portfolio Intelligence Platform for Indian Investors**
 
-The v1.0.0 Community Edition removes paid-tier gating: all portfolio intelligence features are available to registered users. It is intended for local development, Docker evaluation, GitHub portfolio review, and a practical public deployment with a hosted backend and static frontend.
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-Modern_API-009688)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Ready-336791)
+![License](https://img.shields.io/badge/License-MIT-success)
 
-## Current Feature Set
+FinReview is an open-source **Community Edition** portfolio intelligence platform designed to demonstrate modern backend architecture, financial analytics, and responsible AI integration.
 
-### Portfolio Management
+Unlike traditional portfolio trackers that primarily record transactions, FinReview focuses on helping investors understand **what their portfolio is doing** through deterministic financial analytics complemented by AI-assisted portfolio briefings.
 
-- Email/password signup and login with bcrypt password hashing.
-- User profile fields for name, year of birth, city, state, target allocation, and drift sensitivity.
-- Indian equity and mutual fund holdings using NSE/BSE-style symbols and AMFI mutual fund codes.
-- Manual BUY/SELL transaction entry.
-- Bulk CSV transaction import.
-- CAS PDF parser boundary is present, but PDF import is disabled in v1.0.0; use CSV import or manual entry.
-- Optional sample portfolio onboarding for first-run exploration.
-- Empty-state dashboard actions for add transaction, CSV import, and sample portfolio loading.
+This project is published as a **software engineering showcase**, demonstrating backend engineering, solution architecture, REST API design, financial domain modelling, and AI integration.
 
-### Analytics and Diagnostics
+---
 
-- Portfolio valuation, invested cost, gain/loss, and holding-level P&L.
-- XIRR calculation from transaction cash flows.
-- Concentration analysis using individual holding and top-holding exposure.
-- Target allocation drift analysis based on saved user allocation preferences.
-- Tax-loss candidate diagnostic based on holdings trading below cost.
-- Estimated mutual fund overlap diagnostic preview; real fund look-through data integration is planned.
-- Drift diagnostic view for allocation variance review.
+# 🌐 Live Demo
 
-### Alerts and Market Intelligence
+**Application**
 
-- Price-above and price-below alert rules.
-- Portfolio valuation-below alerts.
-- Allocation drift alerts from explicit rules and saved target allocations.
-- Alert event feed with warning and critical severity levels.
-- Portfolio-related market news ingestion.
-- News categories for general news, financial results, announcements, and corporate actions.
-- Lightweight keyword-based news sentiment indicator where available.
-- Nifty market context endpoint.
+https://projects.sathishkannan.com/finreview
 
-### AI Briefings
+---
 
-- OpenRouter-compatible AI briefing service.
-- Structured insight types for portfolio briefing, risk alert, and change explanation.
-- Graceful fallback behavior when no AI provider key is configured.
-- AI output is informational only and is not investment advice.
+# Why FinReview?
 
-### Frontend Experience
+Most portfolio trackers focus on recording transactions.
 
-- Static HTML, CSS, and vanilla JavaScript frontend.
-- Bootstrap 5 and Bootstrap Icons UI.
-- Chart.js dashboard visualizations.
-- Dashboard, full portfolio table, drift diagnostic page, market news page, profile panel, alert modal, transaction modal, CSV import, and AI briefing modal.
-- Runtime backend API configuration through `window.FINREVIEW_API_URL`, including a PHP runtime config example for shared hosting.
-- No frontend build step required.
+FinReview focuses on helping investors understand **what their portfolio is doing** by combining deterministic financial analytics with AI-assisted portfolio intelligence.
 
-## Architecture
+The project was intentionally designed using a **Static Frontend + FastAPI Backend** architecture to demonstrate scalable backend engineering, clean API design, and responsible AI integration while remaining simple to deploy on low-cost infrastructure.
+
+Rather than relying on AI for financial calculations, FinReview keeps all portfolio analytics deterministic and uses AI only to:
+
+- Explain portfolio behaviour
+- Summarise market developments
+- Highlight portfolio observations
+- Generate informational briefings
+
+This separation improves reliability, transparency, and testability while demonstrating responsible AI integration.
+
+---
+
+# 📸 Screenshots
+
+## Dashboard
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+---
+
+## Portfolio
+
+![Portfolio](docs/screenshots/portfolio.png)
+
+---
+
+## Drift Diagnostic
+
+![Drift Diagnostic](docs/screenshots/drift-diagnostic.png)
+
+---
+
+## Market News
+
+![Market News](docs/screenshots/market-news.png)
+
+---
+
+# ✨ Features
+
+## Portfolio Management
+
+- User registration & authentication
+- Indian Stocks and Mutual Funds
+- Manual BUY / SELL transactions
+- CSV transaction import
+- Sample portfolio onboarding
+- Portfolio valuation
+- Holdings management
+- User profile management
+
+---
+
+## Portfolio Analytics
+
+- Portfolio valuation
+- Invested cost tracking
+- Gain/Loss analysis
+- XIRR calculation
+- Concentration analysis
+- Allocation drift diagnostics
+- Tax-loss opportunity diagnostics
+- Estimated mutual fund overlap analysis
+
+---
+
+## Alerts & Market Intelligence
+
+- Price Above alerts
+- Price Below alerts
+- Portfolio value alerts
+- Allocation drift alerts
+- Market news aggregation
+- News sentiment analysis
+- Nifty market context
+
+---
+
+## AI-Assisted Briefings
+
+- Portfolio summaries
+- Risk observations
+- Portfolio explanation
+- OpenRouter integration
+- Graceful fallback when AI is unavailable
+
+---
+
+# 🏗 Design Principles
+
+FinReview was intentionally designed around a few core engineering principles.
+
+### Deterministic Before AI
+
+Financial calculations are performed using deterministic algorithms.
+
+AI is used only to explain results—not generate them.
+
+---
+
+### Backend-First Architecture
+
+Business logic resides entirely within the FastAPI backend while the frontend remains lightweight, framework-independent, and deployment-friendly.
+
+---
+
+### Responsible AI Integration
+
+AI-generated content is clearly identified as informational and is never presented as investment advice.
+
+---
+
+### Deployment Simplicity
+
+The application is intentionally designed to run using a static frontend and independently hosted backend, making deployment straightforward on low-cost infrastructure.
+
+---
+
+### Open Architecture
+
+The Community Edition exposes the complete application architecture without artificial feature restrictions, making it suitable for learning, evaluation, and portfolio review.
+
+---
+
+# 🏛 Architecture
 
 ```mermaid
 flowchart LR
-    UI[Static Frontend] --> API[FastAPI Backend]
-    API --> Services[Portfolio, Analytics, Alerts, News, AI]
-    Services --> DB[(SQLite local or PostgreSQL hosted)]
-    Services --> Market[Yahoo Finance compatible API and mfapi.in]
-    Services --> LLM[OpenRouter compatible LLM API]
+
+Frontend["Static HTML + Bootstrap"]
+
+Frontend --> API["FastAPI"]
+
+API --> Portfolio
+API --> Analytics
+API --> Alerts
+API --> News
+API --> AI
+
+Portfolio --> Database[(SQLite / PostgreSQL)]
+
+News --> Market["Yahoo Finance + mfapi.in"]
+
+AI --> OpenRouter
 ```
 
-Detailed architecture diagrams are in [docs/architecture.md](docs/architecture.md), including system architecture, portfolio intelligence flow, AI briefing flow, and deployment topology. API notes are in [docs/api.md](docs/api.md), and schema notes are in [docs/database.md](docs/database.md).
+Additional documentation:
 
-## Technology Stack
+- docs/architecture.md
+- docs/api.md
+- docs/database.md
 
-- Backend: Python 3.11, FastAPI, SQLModel, SQLAlchemy, Uvicorn.
-- Database: SQLite for local development, PostgreSQL for hosted deployment.
-- Frontend: HTML, vanilla JavaScript, Bootstrap 5, Bootstrap Icons, Chart.js.
-- AI: OpenRouter-compatible chat completion endpoint.
-- Market data: Yahoo Finance-compatible chart API and mfapi.in.
-- Deployment targets: Render for the backend and static/PHP shared hosting such as MilesWeb for the frontend.
+---
 
-## Repository Layout
+# ⚙ Technology Stack
+
+| Layer | Technology |
+|---------|------------|
+| Backend | Python 3.11, FastAPI, SQLModel |
+| Frontend | HTML5, Bootstrap 5, Vanilla JavaScript |
+| Database | SQLite (Development), PostgreSQL (Production) |
+| Charts | Chart.js |
+| AI | OpenRouter |
+| Market Data | Yahoo Finance & mfapi.in |
+| Deployment | Render + Static Hosting |
+
+---
+
+# 📂 Repository Structure
 
 ```text
-backend/                 FastAPI app, services, models, repositories, providers
-frontend/                Static browser UI and runtime config example
-docs/                    Architecture, API, and database notes
-scripts/                 Utility scripts such as sample data seeding
-tests/                   Backend-focused regression tests
-render.yaml              Render backend blueprint
-docker-compose.yml       Local full-stack evaluation
-Dockerfile               Backend container image
-.env.example             Local environment template
+backend/
+    FastAPI backend
+
+frontend/
+    Static HTML, CSS & JavaScript
+
+docs/
+    Technical documentation
+
+tests/
+    Backend regression tests
+
+scripts/
+    Utility scripts
+
+Dockerfile
+
+docker-compose.yml
+
+render.yaml
 ```
 
-## Quick Start
+---
 
-### Backend
+# 🚀 Quick Start
+
+## Backend
 
 ```bash
 cd backend
+
 python -m venv .venv
-.venv\Scripts\activate
+
 pip install -r requirements.txt
+
 copy ..\.env.example .env
+
 uvicorn main:app --reload
 ```
 
-Open API docs at `http://localhost:8000/docs`.
+Backend
 
-### Frontend
+```
+http://localhost:8000
+```
+
+---
+
+## Frontend
 
 ```bash
 cd frontend
+
 python -m http.server 8080
 ```
 
-Open `http://localhost:8080`.
+Frontend
 
-The local frontend defaults to `http://localhost:8000` for the backend API.
+```
+http://localhost:8080
+```
 
-## Docker Evaluation
+---
+
+# 🐳 Docker
 
 ```bash
 copy .env.example .env
+
 docker compose up --build
 ```
 
-- Frontend: `http://localhost:8080`
-- Backend: `http://localhost:8000`
-- API docs: `http://localhost:8000/docs`
+---
 
-## Configuration
+# ☁ Deployment
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `DATABASE_URL` | Hosted yes, local no | SQLModel database URL. Defaults to local SQLite when omitted. Use PostgreSQL for hosted deployment. |
-| `CORS_ALLOW_ORIGINS` | Hosted yes, local no | Comma-separated frontend origins allowed to call the API. |
-| `AUTH_SECRET_KEY` | Hosted yes, local no | Random secret used to sign lightweight bearer tokens. |
-| `OPENROUTER_API_KEY` | No | Enables live AI briefing generation. |
-| `AI_MODEL_ENDPOINT` | No | Chat completions endpoint. |
-| `AI_MODEL_NAME` | No | Model name sent to the provider. |
-| `NEWS_API_KEY` | No | Optional NewsData.io fallback key. |
-| `MARKET_DATA_API_KEY` | No | Reserved for alternate market data providers. |
-| `LOG_LEVEL` | No | Python logging level. |
+Recommended deployment architecture
 
-Do not commit `.env`, local databases, API keys, database URLs, or deployment secrets.
+| Component | Platform |
+|-----------|----------|
+| Frontend | Static Hosting (MilesWeb) |
+| Backend | Render |
+| Database | PostgreSQL |
+| AI | OpenRouter |
 
-## Frontend Runtime API URL
+---
 
-Browser JavaScript must know the public API origin, so the backend URL is configuration rather than a secret. For shared hosting, keep the real value out of Git by copying:
+# 🔐 Configuration
 
-```text
-frontend/config.runtime.example.php
+Important environment variables
+
+```
+DATABASE_URL
+
+AUTH_SECRET_KEY
+
+OPENROUTER_API_KEY
+
+CORS_ALLOW_ORIGINS
+
+LOG_LEVEL
 ```
 
-to:
+Refer to:
 
-```text
-frontend/config.runtime.php
+```
+.env.example
 ```
 
-Then set `FINREVIEW_API_URL` in the hosting environment and include this before `config.js` in the hosted `index.html`:
+---
 
-```html
-<script src="config.runtime.php"></script>
+# 🛡 Security
+
+- Open-source Community Edition
+- Informational only — not investment advice
+- Lightweight HMAC-signed bearer authentication
+- SQLite for development
+- PostgreSQL recommended for hosted deployments
+- Secrets managed using environment variables
+
+---
+
+# 🎯 Engineering Objectives
+
+FinReview was built to demonstrate practical software engineering across multiple disciplines:
+
+- Solution Architecture
+- Backend Engineering
+- REST API Design
+- Financial Domain Modelling
+- AI Integration
+- Authentication & Security
+- Database Design
+- Deployment Architecture
+- Production-style Engineering Practices
+- Technical Documentation
+
+---
+
+# 📚 Documentation
+
+Additional technical documentation is available under the **docs/** directory.
+
+- Architecture
+- API
+- Database
+- Deployment
+
+---
+
+# 🗺 Roadmap
+
+See:
+
+```
+ROADMAP.md
 ```
 
-`frontend/config.runtime.php` is ignored by Git.
+---
 
-## Sample Portfolio
+# 🤝 Contributing
 
-New users start with an empty portfolio. The dashboard offers onboarding actions to add transactions, import CSV, or load the optional sample portfolio. The sample uses [sample_portfolio.csv](sample_portfolio.csv) and can be loaded through the UI or `POST /sample-portfolio/{user_id}`.
+Please refer to:
 
-## Testing
+- CONTRIBUTING.md
+- CODE_OF_CONDUCT.md
 
-```bash
-pip install -r backend/requirements.txt
-pip install -r requirements-dev.txt
-pytest -q tests
-python -m py_compile backend/main.py backend/config/settings.py
-node --check frontend/config.js
-node --check frontend/app.js
-node --check frontend/auth.js
-node --check frontend/ui.js
-```
+---
 
-## Deployment
+# 📄 License
 
-Recommended portfolio deployment:
+MIT License
 
-- Backend: Render Web Service using `backend/` as the root directory.
-- Database: PostgreSQL through Render, Supabase, Aiven, or another managed provider.
-- Frontend: MilesWeb or similar shared hosting serving the static frontend files.
-- API origin: a custom subdomain such as `api.yourdomain.com` pointing to the hosted backend.
+---
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for exact Render and MilesWeb steps.
+# 👨‍💻 Author
 
-## Security and Compliance Notes
+**Sathish Kannan**
 
-- FinReview is an educational portfolio project and does not provide investment advice.
-- The app is not registered with SEBI.
-- Authentication uses a lightweight signed bearer token with user ownership checks; full JWT/session rotation hardening is a recommended next step.
-- SQLite is suitable for local development, but hosted deployments should use PostgreSQL.
-- CAS PDF import is disabled in v1.0.0. A production parser and secure file-handling path should be added before handling sensitive real statements.
-- Keep provider keys, database credentials, and environment files outside GitHub.
+Backend Engineer • AI Integration • Solution Architecture • Financial Technology
 
-## Screenshots
+🌐 Portfolio  
+https://sathishkannan.com
 
-Screenshots are planned before the final portfolio showcase. Recommended captures: dashboard, portfolio table, transaction import modal, drift diagnostic page, market news page, and AI briefing modal.
+🚀 Live Demo  
+https://projects.sathishkannan.com/finreview
 
-## Roadmap
+💻 GitHub  
+https://github.com/sathishkannan-sakthivel
 
-See [ROADMAP.md](ROADMAP.md).
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+💼 LinkedIn  
+https://www.linkedin.com/in/ssathishkannan

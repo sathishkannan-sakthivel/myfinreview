@@ -378,7 +378,7 @@ MIT License
 
 # 👨‍💻 Author
 
-**Sathish Kannan**
+**Sathishkannan**
 
 Backend Engineer • AI Integration • Solution Architecture • Financial Technology
 

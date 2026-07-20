@@ -1002,7 +1002,6 @@
                 </div>
             </div>
         </div>
-        <script src="config.runtime.php"></script>
         <script src="config.js"></script>
         <script src="ui.js"></script>
         <script src="auth.js"></script>
@@ -1012,6 +1011,162 @@
             *FinReview provides factual portfolio diagnostics and does not give investment advice. We are not registered
             with SEBI.
         </footer>
+
+        <!-- RENDER COLD-START WAKE MODAL -->
+        <div class="modal fade" id="wakeModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+            aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                    <div class="modal-header border-0 text-white p-4"
+                        style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);">
+                        <div>
+                            <h5 class="modal-title fw-bold mb-1">🚀 FinReview is starting up</h5>
+                            <p class="mb-0 text-white-50 small">Waking the backend — this takes 30–60 seconds</p>
+                        </div>
+                    </div>
+                    <div class="modal-body p-4 bg-light">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                            <span id="wake-status-text" class="fw-bold text-dark">Checking backend…</span>
+                        </div>
+                        <div class="progress mb-3" style="height: 10px; border-radius: 10px; background-color: #e2e8f0;">
+                            <div id="wake-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                                role="progressbar" style="width: 5%"></div>
+                        </div>
+                        <div id="wake-fact-text" class="p-3 bg-white rounded border text-secondary small mb-3"
+                            style="transition: opacity 0.2s ease-in-out; min-height: 64px; display: flex; align-items: center;">
+                            Loading project architecture highlights…
+                        </div>
+                        <div class="text-muted extra-small" style="font-size: 0.78rem;">
+                            <i class="bi bi-info-circle me-1"></i>Render free tier puts inactive services to sleep. Please wait while the server wakes up — the page will automatically resume once ready.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            (function () {
+                const rawApiUrl = window.FINREVIEW_API_URL || 'http://localhost:8000';
+                const HEALTH_URL = rawApiUrl.endsWith('/') ? rawApiUrl : rawApiUrl + '/';
+                const POLL_MS = 5000;
+                const MAX_WAIT_MS = 120000;
+                const SKIP_LOCALLY = HEALTH_URL.includes('localhost') || HEALTH_URL.includes('127.0.0.1');
+
+                const TECH_FACTS = [
+                    "🚀 Backend is powered by FastAPI for high-performance asynchronous REST API handling.",
+                    "🗄️ SQLModel combines Pydantic and SQLAlchemy for type-safe database models.",
+                    "🧮 Portfolio XIRR return metrics are calculated using numerical Newton-Raphson optimization.",
+                    "🤖 Multi-LLM AI analysis uses an OpenRouter provider abstraction layer.",
+                    "🔐 API security is enforced with HMAC signature validation for protected routes.",
+                    "🐳 Deployed with Docker containers connected to PostgreSQL on Render cloud infrastructure.",
+                    "💡 Architecture separation: Financial logic strictly calculates metrics while AI explains them.",
+                    "📜 Project design follows 12 Architectural Decision Records (ADRs) ensuring codebase quality."
+                ];
+
+                let modalInstance = null;
+                let pollInterval = null;
+                let factInterval = null;
+                let startTime = 0;
+                let factIndex = 0;
+
+                async function checkHealth() {
+                    try {
+                        let signal;
+                        if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+                            signal = AbortSignal.timeout(4000);
+                        } else {
+                            const controller = new AbortController();
+                            setTimeout(() => controller.abort(), 4000);
+                            signal = controller.signal;
+                        }
+                        const res = await fetch(HEALTH_URL, {
+                            method: 'GET',
+                            cache: 'no-store',
+                            signal: signal
+                        });
+                        return res.ok;
+                    } catch (e) {
+                        return false;
+                    }
+                }
+
+                async function init() {
+                    if (SKIP_LOCALLY) {
+                        return;
+                    }
+
+                    const isWarm = await checkHealth();
+                    if (isWarm) {
+                        return;
+                    }
+
+                    const modalEl = document.getElementById('wakeModal');
+                    const statusEl = document.getElementById('wake-status-text');
+                    const progressBarEl = document.getElementById('wake-progress-bar');
+                    const factEl = document.getElementById('wake-fact-text');
+
+                    if (!modalEl || !statusEl || !progressBarEl || !factEl) return;
+
+                    modalInstance = new bootstrap.Modal(modalEl, {
+                        backdrop: 'static',
+                        keyboard: false
+                    });
+                    modalInstance.show();
+
+                    startTime = Date.now();
+                    factEl.textContent = TECH_FACTS[0];
+
+                    factInterval = setInterval(() => {
+                        factIndex = (factIndex + 1) % TECH_FACTS.length;
+                        factEl.style.opacity = '0';
+                        setTimeout(() => {
+                            factEl.textContent = TECH_FACTS[factIndex];
+                            factEl.style.opacity = '1';
+                        }, 200);
+                    }, 6000);
+
+                    pollInterval = setInterval(async () => {
+                        const elapsed = Date.now() - startTime;
+                        const progressPct = Math.min(90, Math.max(5, (elapsed / MAX_WAIT_MS) * 90));
+                        progressBarEl.style.width = progressPct + '%';
+
+                        const remainingSec = Math.max(0, Math.ceil((MAX_WAIT_MS - elapsed) / 1000));
+                        statusEl.textContent = `Waking backend… ~${remainingSec}s remaining`;
+
+                        if (elapsed >= MAX_WAIT_MS) {
+                            clearInterval(pollInterval);
+                            clearInterval(factInterval);
+                            statusEl.textContent = "Backend startup timed out. Please refresh the page to try again.";
+                            progressBarEl.classList.remove('progress-bar-striped', 'progress-bar-animated');
+                            return;
+                        }
+
+                        const ok = await checkHealth();
+                        if (ok) {
+                            clearInterval(pollInterval);
+                            clearInterval(factInterval);
+                            statusEl.textContent = "Backend is ready ✓";
+                            progressBarEl.style.width = "100%";
+                            progressBarEl.classList.remove('progress-bar-striped', 'progress-bar-animated');
+                            progressBarEl.classList.add('bg-success');
+
+                            setTimeout(() => {
+                                if (modalInstance) {
+                                    modalInstance.hide();
+                                }
+                            }, 800);
+                        }
+                    }, POLL_MS);
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', init);
+                } else {
+                    init();
+                }
+            })();
+        </script>
 </body>
 
 </html>
